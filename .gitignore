@@ -1,0 +1,15 @@
+# Environment variables
+.env
+
+# Vaultwarden data and logs
+vw-data/
+vw-logs/
+backups/
+
+# Tailscale state
+tailscale-config/tailscaled.state*
+tailscale-config/*.log
+
+# System files
+.DS_Store
+Thumbs.db
