@@ -13,3 +13,4 @@ tailscale-config/*.log
 # System files
 .DS_Store
 Thumbs.db
+tailscale-state/tailscaled.log*.*
