@@ -6,11 +6,9 @@ vw-data/
 vw-logs/
 backups/
 
-# Tailscale state
-tailscale-config/tailscaled.state*
-tailscale-config/*.log
+# Tailscale runtime state (root-owned files)
+tailscale-state/
 
 # System files
 .DS_Store
 Thumbs.db
-tailscale-state/tailscaled.log*.*
