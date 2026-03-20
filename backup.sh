@@ -3,8 +3,18 @@
 # Vaultwarden Complete Backup Script
 # Backs up all critical data for full disaster recovery
 # Run this script regularly to backup your Vaultwarden deployment
+# Usage: ./backup.sh <backup_directory>
 
-BACKUP_DIR="./backups"
+# Check if backup directory parameter is provided
+if [ $# -eq 0 ]; then
+    echo "❌ Error: Backup directory is required"
+    echo "Usage: $0 <backup_directory>"
+    echo "Example: $0 ./backups"
+    echo "Example: $0 /mnt/external/vw-backups"
+    exit 1
+fi
+
+BACKUP_DIR="$1"
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="vaultwarden_complete_backup_$DATE.tar.gz"
 
@@ -57,5 +67,9 @@ echo "✅ Backup script finished!"
 echo ""
 echo "💡 To restore on a new server:"
 echo "   1. Copy this backup file to the new server"
-echo "   2. Extract: tar -xzf $BACKUP_FILE"
+echo "   2. Extract: tar -xzf <backup_file>"
 echo "   3. Run: docker compose up -d"
+echo ""
+echo "💡 To create regular backups:"
+echo "   ./backup.sh <backup_directory>"
+echo "   Example: ./backup.sh ./backups"
