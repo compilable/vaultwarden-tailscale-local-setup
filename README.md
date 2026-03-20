@@ -180,6 +180,79 @@ docker compose exec tailscale tailscale serve status
 - **Can't access via Tailscale**: Verify TS_CERT_DOMAIN matches your Tailscale machine name
 - **Health check failing**: Ensure ROCKET_PORT matches the port in serve.json
 
+## Database Reset (Fresh Start)
+
+If you need to completely reset your Vaultwarden instance (remove all users, organizations, and vault data), follow these steps:
+
+### ⚠️ **Warning**
+This will permanently delete ALL user data, passwords, and organizations. Create a backup first if you want to preserve any data.
+
+### **When to Use Database Reset:**
+- "Registration not allowed or user already exists" errors when trying to create accounts
+- Forgotten admin credentials and need to start over
+- Testing/development scenarios requiring clean state
+- Corrupted database requiring fresh installation
+
+### **Reset Procedure:**
+
+1. **Create Backup** (Optional but recommended):
+   ```bash
+   # Create timestamped backup
+   ./backup.sh
+   # Or manual backup
+   sudo cp -r vw-data vw-data-backup-$(date +%Y%m%d_%H%M%S)
+   ```
+
+2. **Stop Services:**
+   ```bash
+   docker compose down
+   ```
+
+3. **Reset Database:**
+   ```bash
+   # Remove database files (requires sudo due to container permissions)
+   sudo rm -rf vw-data/db.sqlite3*
+   
+   # Preserve other important files (icons, keys, etc.)
+   # Only database files are removed, configuration is preserved
+   ```
+
+4. **Restart Services:**
+   ```bash
+   docker compose up -d
+   ```
+
+5. **Verify Clean State:**
+   ```bash
+   # Check container health
+   docker compose ps
+   
+   # Visit web vault - should show clean login/registration page
+   # https://your-tailscale-domain
+   ```
+
+### **After Database Reset:**
+
+1. **Enable Signups Temporarily** (if needed):
+   - Set `SIGNUPS_ALLOWED=true` in `.env`
+   - Restart: `docker compose restart vaultwarden`
+
+2. **Create New Admin Account:**
+   - Go to your Tailscale domain (web vault, not admin panel)
+   - Create your admin user account
+   - Create your organization through web vault
+
+3. **Secure System:**
+   - Set `SIGNUPS_ALLOWED=false` in `.env` 
+   - Restart: `docker compose restart vaultwarden`
+   - Verify admin panel access with your admin token
+
+### **Important Notes:**
+- **Tailscale state preserved**: Your machine identity and domain remain unchanged
+- **Configuration preserved**: `.env`, `docker-compose.yml`, and `tailscale-config/` are untouched
+- **Only user data reset**: Database, organizations, and vault entries are removed
+- **Admin token unchanged**: Your admin panel access remains the same
+
 ## Directory Structure
 
 ```
