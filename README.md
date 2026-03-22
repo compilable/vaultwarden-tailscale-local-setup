@@ -10,44 +10,194 @@ A secure, self-hosted password manager using Vaultwarden and Tailscale.
 
 ## Setup Instructions
 
-1. **Configure Environment Variables**
-   - Copy `.env.example` to `.env` if provided, or update the existing `.env` file
-   - Replace the following values in `.env`:
-     - `TS_AUTHKEY`: Your Tailscale auth key
-     - `TS_CERT_DOMAIN`: Your Tailscale machine name (e.g., `vaultwarden.your-tailnet.ts.net`)
-     - `DOMAIN`: Full HTTPS URL (e.g., `https://vaultwarden.your-tailnet.ts.net`)
-     - `ADMIN_TOKEN`: Generate a new secure admin token
-
-2. **Generate Admin Token**
+### 1. **Configure Environment Variables**
+   
+   Update the `.env` file with your specific values:
    ```bash
-   # Generate a new admin token
-   docker run --rm -it vaultwarden/server:latest /vaultwarden hash --preset argon2id
+   # Vaultwarden Configuration
+   ADMIN_TOKEN=$2a$12$... # Leave commented out to disable admin panel
+   DOMAIN=https://ser-1.taile9f91c.ts.net
+   ROCKET_PORT=80
+
+   # Tailscale Configuration  
+   TS_AUTHKEY=tskey-auth-YOUR_KEY_HERE
+   TS_CERT_DOMAIN=ser-1.taile9f91c.ts.net
+   TS_HOSTNAME=ser-1
+
+   # Security Settings
+   SIGNUPS_ALLOWED=true  # Set to false after creating accounts
+   WEBSOCKET_ENABLED=true
+   SHOW_PASSWORD_HINT=false
    ```
 
-3. **Start Services**
+### 2. **Generate Tailscale Auth Key**
+   - Go to [Tailscale Auth Keys](https://login.tailscale.com/admin/settings/keys)
+   - Click "Generate auth key"
+   - **Important settings:**
+     - ✅ **Reusable**: Enable (allows container restarts)
+     - ✅ **Preauthorized**: Enable 
+     - ✅ **Expiry**: Set to 90+ days
+   - Copy the key and update `TS_AUTHKEY` in `.env`
+
+### 3. **Generate Admin Token** (Optional)
    ```bash
+   # Generate a secure admin token
+   docker run --rm -it vaultwarden/server:latest /vaultwarden hash --preset argon2id
+   ```
+   
+   To disable admin panel: Comment out `ADMIN_TOKEN` line in `.env`
+
+### 4. **Clean Old Tailscale Nodes**
+   - Visit [Tailscale Admin Console](https://login.tailscale.com/admin/machines)
+   - Delete any old/offline nodes with the same hostname (`ser-1-1`, `ser-1-2`, etc.)
+   - This prevents hostname conflicts
+
+### 5. **Start Services**
+   ```bash
+   # Stop any existing containers
+   docker compose down
+   
+   # Clear Tailscale state for fresh start
+   sudo rm -rf ./tailscale-state/*
+   
+   # Start services
    docker compose up -d
    ```
 
-4. **Verify Deployment**
-   - Check container status: `docker compose ps`
-   - View logs: `docker compose logs -f`
-   - Access via your Tailscale domain
+### 6. **Verify Deployment**
+   ```bash
+   # Check container status (both should be healthy)
+   docker compose ps
+   
+   # Verify Tailscale hostname
+   docker compose exec tailscale tailscale status
+   
+   # Check service accessibility
+   curl -I https://ser-1.taile9f91c.ts.net/
+   
+   # View logs if needed
+   docker compose logs -f
+   ```
 
-5. **Initial Configuration**
-   - Access the admin panel at `https://your-domain/admin`
-   - Use your admin token to login
-   - Configure additional security settings
+### 7. **Initial Setup**
+   - Access Vaultwarden at: `https://ser-1.taile9f91c.ts.net`
+   - Create your first user account
+   - Set `SIGNUPS_ALLOWED=false` in `.env` and restart after setup
+   - Access admin panel (if enabled) at `/admin`
+
+## Troubleshooting
+
+### Hostname Issues (`ser-1-2`, `ser-1-3` appearing)
+```bash
+# Stop containers
+docker compose down
+
+# Clean Tailscale state
+sudo rm -rf ./tailscale-state/*
+
+# Delete old nodes from Tailscale admin console
+# Then restart
+docker compose up -d
+```
+
+### Auth Key Expired
+1. Generate new auth key in Tailscale admin console
+2. Update `TS_AUTHKEY` in `.env`
+3. Restart: `docker compose restart tailscale`
+
+### Admin Panel Issues
+- **To disable admin panel**: Comment out `ADMIN_TOKEN` in `.env`
+- **To apply changes**: Remove `./vw-data/config.json` and restart
+- **To re-enable**: Uncomment `ADMIN_TOKEN` and restart
+
+### Fresh Start (Reset All Data)
+```bash
+# Stop containers
+docker compose down
+
+# Clear all Vaultwarden data (WARNING: Deletes all users/passwords!)
+sudo rm -rf ./vw-data/*
+rm -rf ./vw-logs/*
+
+# Start fresh
+docker compose up -d
+```
+
+## Configuration Details
+
+### docker-compose.yml Key Settings
+- Vaultwarden uses Tailscale's network stack (`network_mode: service:tailscale`)
+- Tailscale serves HTTPS on port 443, proxies to Vaultwarden on port 80
+- `TS_EXTRA_ARGS=--accept-dns=false --accept-routes` prevents conflicts
+
+### serve.json Configuration
+```json
+{
+  "TCP": { "443": { "HTTPS": true } },
+  "Web": {
+    "${TS_CERT_DOMAIN}:443": {
+      "Handlers": { "/": { "Proxy": "http://127.0.0.1:80" } }
+    }
+  }
+}
+```
 
 ## Security Recommendations
 
-- Set `SIGNUPS_ALLOWED=false` after creating your accounts
+- Set `SIGNUPS_ALLOWED=false` after creating accounts
+- Use strong, unique master passwords  
+- Enable 2FA for all accounts
 - Regularly backup using the provided `backup.sh` script
-- Keep Docker images updated
-- Monitor logs for suspicious activity
-- Use strong, unique admin token
+- Keep Docker images updated: `docker compose pull && docker compose up -d`
+- Monitor logs for suspicious activity: `docker compose logs -f`
+- Disable admin panel for production use
 
-## Backup & Disaster Recovery
+## Backup & Recovery
+
+### Manual Backup
+```bash
+# Run the backup script
+./backup.sh
+
+# Backup files are stored in ./backups/ with timestamps
+```
+
+### Restore from Backup
+```bash
+# Stop services
+docker compose down
+
+# Restore data from backup
+cp -r ./backups/vw-data.TIMESTAMP/* ./vw-data/
+cp -r ./backups/tailscale-state.TIMESTAMP/* ./tailscale-state/
+
+# Start services  
+docker compose up -d
+```
+
+## Maintenance
+
+### Update Containers
+```bash
+docker compose pull
+docker compose up -d
+```
+
+### View Resource Usage
+```bash
+docker compose exec vaultwarden df -h /data
+docker stats --no-stream
+```
+
+### Container Health Checks
+```bash
+# All containers should show "healthy"
+docker compose ps
+
+# Check individual service logs
+docker compose logs tailscale
+docker compose logs vaultwarden
+```
 
 ### Critical Components to Backup
 

@@ -12,3 +12,4 @@ tailscale-state/
 # System files
 .DS_Store
 Thumbs.db
+latest_bk/*

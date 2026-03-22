@@ -40,6 +40,7 @@ services:
       - TS_HOSTNAME=${TS_HOSTNAME}
       - TS_CERT_DOMAIN=${TS_CERT_DOMAIN}
       - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--accept-dns=false --accept-routes
     volumes:
       - ./tailscale-config:/config
       - ./tailscale-state:/var/lib/tailscale
