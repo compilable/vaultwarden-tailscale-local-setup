@@ -79,13 +79,147 @@ A secure, self-hosted password manager using Vaultwarden and Tailscale.
    docker compose logs -f
    ```
 
-### 7. **Initial Setup**
+### 7. **Enable Tailscale Funnel (Public Internet Access)**
+
+   **Important**: By default, your Vaultwarden is only accessible within your Tailscale network (tailnet). To make it accessible from the public internet, you need to enable **Tailscale Funnel**.
+
+   **Difference between Serve and Funnel:**
+   - **Tailscale Serve**: Only accessible to devices in your Tailscale network
+   - **Tailscale Funnel**: Accessible from anywhere on the public internet
+
+   #### Enable Funnel in Tailscale Admin Console:
+   1. Go to [Tailscale Admin Console](https://login.tailscale.com/admin/dns)
+   2. Navigate to the **DNS** tab
+   3. Find **Funnel** settings and **enable it** for your tailnet
+   4. Tag your machine for public access:
+      - Go to [Machines](https://login.tailscale.com/admin/machines)
+      - Find your `ser-1` machine
+      - Add tag: `tag:public`
+   
+   #### Enable Funnel via Command Line:
+   ```bash
+   # Enable Funnel to expose port 80 via HTTPS on port 443
+   docker exec tailscale tailscale funnel --bg --https 443 80
+   ```
+   
+   #### Verify Funnel Status:
+   ```bash
+   # Check if Funnel is enabled (should show "Funnel on")
+   docker exec tailscale tailscale funnel status
+   
+   # Test public accessibility
+   curl -I https://ser-1.taile9f91c.ts.net/
+   ```
+
+   #### Update serve.json for Funnel:
+   Your [serve.json](tailscale-config/serve.json) should include `"Funnel": true`:
+   ```json
+   {
+     "TCP": {
+       "443": {
+         "HTTPS": true,
+         "Funnel": true
+       }
+     },
+     "Web": {
+       "ser-1.taile9f91c.ts.net:443": {
+         "Handlers": {
+           "/": {
+             "Proxy": "http://127.0.0.1:80"
+           }
+         }
+       }
+     }
+   }
+   ```
+
+### 8. **Initial Setup**
    - Access Vaultwarden at: `https://ser-1.taile9f91c.ts.net`
    - Create your first user account
    - Set `SIGNUPS_ALLOWED=false` in `.env` and restart after setup
    - Access admin panel (if enabled) at `/admin`
 
 ## Troubleshooting
+
+### DNS Resolution Issues (After Enabling Funnel)
+
+If you get "DNS address could not be found" errors after enabling Funnel, this is typically due to **DNS caching**:
+
+#### **Clear DNS Cache:**
+```bash
+# Windows
+ipconfig /flushdns
+
+# macOS  
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+
+# Linux
+sudo systemctl restart systemd-resolved
+# or
+sudo resolvectl flush-caches
+```
+
+#### **Browser Solutions:**
+- Clear browser cache: `Ctrl+Shift+Delete` → Clear all data
+- Hard refresh: `Ctrl+Shift+R` (or `Cmd+Shift+R` on macOS)
+- Try incognito/private mode (bypasses browser DNS cache)
+- Try a different browser
+
+#### **Verify Funnel Status:**
+```bash
+# Should show "Funnel on" not "tailnet only"
+docker exec tailscale tailscale funnel status
+
+# Test DNS resolution
+nslookup ser-1.taile9f91c.ts.net 8.8.8.8
+
+# Test public accessibility  
+curl -I https://ser-1.taile9f91c.ts.net/
+```
+
+### Mobile App HTTP 404 Errors
+
+If your mobile app shows login errors or HTTP 404:
+
+#### **1. Clear App Data:**
+- Settings → About → Clear Data (or uninstall/reinstall)
+- Add new account with correct server URL
+
+#### **2. Verify Server Configuration:**
+Ensure these URLs are correct in mobile app:
+- **Server URL**: `https://ser-1.taile9f91c.ts.net`
+- **API Server URL**: `https://ser-1.taile9f91c.ts.net/api`
+- **Identity Server URL**: `https://ser-1.taile9f91c.ts.net/identity`
+- **Web Vault URL**: `https://ser-1.taile9f91c.ts.net`
+
+#### **3. Test API Endpoints:**
+```bash
+# Test config endpoint
+curl https://ser-1.taile9f91c.ts.net/api/config
+
+# Test prelogin endpoint (requires POST with email)
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"email":"test@example.com"}' \
+     https://ser-1.taile9f91c.ts.net/api/accounts/prelogin
+```
+
+### Funnel Not Working
+
+#### **Enable Funnel Permissions:**
+1. Go to [Tailscale Admin Console](https://login.tailscale.com/admin/dns) → DNS tab
+2. Enable **Funnel** for your tailnet
+3. Tag machine with `tag:public` in [Machines](https://login.tailscale.com/admin/machines)
+
+#### **Manual Funnel Activation:**
+```bash
+# If serve.json config isn't working, enable manually
+docker exec tailscale tailscale funnel --bg --https 443 80
+
+# Verify it's enabled
+docker exec tailscale tailscale funnel status
+# Should show: "# Funnel on: - https://ser-1.taile9f91c.ts.net"
+```
 
 ### Hostname Issues (`ser-1-2`, `ser-1-3` appearing)
 ```bash
@@ -131,26 +265,59 @@ docker compose up -d
 - `TS_EXTRA_ARGS=--accept-dns=false --accept-routes` prevents conflicts
 
 ### serve.json Configuration
+
+**For Tailscale Serve (tailnet-only):**
 ```json
 {
   "TCP": { "443": { "HTTPS": true } },
   "Web": {
-    "${TS_CERT_DOMAIN}:443": {
+    "ser-1.taile9f91c.ts.net:443": {
       "Handlers": { "/": { "Proxy": "http://127.0.0.1:80" } }
     }
   }
 }
 ```
 
+**For Tailscale Funnel (public internet):**
+```json
+{
+  "TCP": { 
+    "443": { 
+      "HTTPS": true,
+      "Funnel": true 
+    } 
+  },
+  "Web": {
+    "ser-1.taile9f91c.ts.net:443": {
+      "Handlers": { "/": { "Proxy": "http://127.0.0.1:80" } }
+    }
+  }
+}
+```
+
+**Note**: The domain must be hardcoded (not `${TS_CERT_DOMAIN}`) for Funnel to work properly.
+
 ## Security Recommendations
 
+### **Critical for Public Internet Access (Funnel):**
+- **IMMEDIATELY set `SIGNUPS_ALLOWED=false`** after creating your accounts
+- **Enable strong rate limiting** in Vaultwarden (built-in protection)
+- **Monitor admin panel logs** regularly for suspicious activity
+- **Use fail2ban** or similar to block repeated login attempts
+- **Keep Docker images updated**: `docker compose pull && docker compose up -d`
+
+### **General Security:**
 - Set `SIGNUPS_ALLOWED=false` after creating accounts
 - Use strong, unique master passwords  
 - Enable 2FA for all accounts
 - Regularly backup using the provided `backup.sh` script
-- Keep Docker images updated: `docker compose pull && docker compose up -d`
 - Monitor logs for suspicious activity: `docker compose logs -f`
-- Disable admin panel for production use
+- Disable admin panel for production use (comment out `ADMIN_TOKEN`)
+
+### **Network Security (Funnel vs Serve):**
+- **Tailscale Serve**: Only accessible to your Tailscale devices (more secure)
+- **Tailscale Funnel**: Public internet access (convenient but requires stronger security)
+- Consider using **Serve** for personal use and **Funnel** only when needed
 
 ## Backup & Recovery
 
