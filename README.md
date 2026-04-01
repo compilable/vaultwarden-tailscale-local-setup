@@ -96,16 +96,17 @@ A secure, self-hosted password manager using Vaultwarden and Tailscale.
       - Find your `ser-1` machine
       - Add tag: `tag:public`
    
-   #### Enable Funnel via Command Line:
-   ```bash
-   # Enable Funnel to expose port 80 via HTTPS on port 443
-   docker exec tailscale tailscale funnel --bg --https 443 80
-   ```
+    #### Enable Funnel via Command Line (Optional Manual Override):
+    ```bash
+    # This deployment auto-enables Funnel on tailscale container start.
+    # Run manually only if you need to re-apply it immediately.
+    docker compose exec tailscale tailscale funnel --bg --https=443 80
+    ```
    
    #### Verify Funnel Status:
    ```bash
    # Check if Funnel is enabled (should show "Funnel on")
-   docker exec tailscale tailscale funnel status
+  docker compose exec tailscale tailscale funnel status
    
    # Test public accessibility
    curl -I https://ser-1.taile9f91c.ts.net/
@@ -169,7 +170,7 @@ sudo resolvectl flush-caches
 #### **Verify Funnel Status:**
 ```bash
 # Should show "Funnel on" not "tailnet only"
-docker exec tailscale tailscale funnel status
+docker compose exec tailscale tailscale funnel status
 
 # Test DNS resolution
 nslookup ser-1.taile9f91c.ts.net 8.8.8.8
@@ -206,18 +207,50 @@ curl -X POST -H "Content-Type: application/json" \
 
 ### Funnel Not Working
 
+#### **HTTP 502 After Restarting Tailscale:**
+
+If Funnel shows "on" but browser requests return **HTTP 502**, Vaultwarden is usually attached to an old/deleted Tailscale network namespace.
+
+Recreate Vaultwarden so it rejoins the current Tailscale namespace:
+
+```bash
+docker compose rm -sf vaultwarden
+docker compose up -d vaultwarden
+```
+
+Recommended restart order when changing/restarting `tailscale`:
+
+```bash
+docker compose up -d tailscale
+docker compose rm -sf vaultwarden
+docker compose up -d vaultwarden
+```
+
 #### **Enable Funnel Permissions:**
 1. Go to [Tailscale Admin Console](https://login.tailscale.com/admin/dns) → DNS tab
 2. Enable **Funnel** for your tailnet
 3. Tag machine with `tag:public` in [Machines](https://login.tailscale.com/admin/machines)
+4. Ensure your tailnet policy allows Funnel for that tag:
+
+```json
+"tagOwners": {
+  "tag:public": ["your-user@example.com"]
+},
+"nodeAttrs": [
+  {
+    "target": ["tag:public"],
+    "attr": ["funnel"]
+  }
+]
+```
 
 #### **Manual Funnel Activation:**
 ```bash
 # If serve.json config isn't working, enable manually
-docker exec tailscale tailscale funnel --bg --https 443 80
+docker compose exec tailscale tailscale funnel --bg --https=443 80
 
 # Verify it's enabled
-docker exec tailscale tailscale funnel status
+docker compose exec tailscale tailscale funnel status
 # Should show: "# Funnel on: - https://ser-1.taile9f91c.ts.net"
 ```
 
@@ -262,6 +295,7 @@ docker compose up -d
 ### docker-compose.yml Key Settings
 - Vaultwarden uses Tailscale's network stack (`network_mode: service:tailscale`)
 - Tailscale serves HTTPS on port 443, proxies to Vaultwarden on port 80
+- Tailscale startup command auto-enables Funnel (`tailscale funnel --bg --https=443 80`)
 - `TS_EXTRA_ARGS=--accept-dns=false --accept-routes` prevents conflicts
 
 ### serve.json Configuration
@@ -349,6 +383,16 @@ docker compose up -d
 docker compose pull
 docker compose up -d
 ```
+
+### Full Redeploy (Remove Containers + Images + Recreate)
+```bash
+./redeploy.sh
+```
+
+This script does the following:
+- Stops and removes existing compose containers
+- Removes compose-managed images (`vaultwarden/server` and `ghcr.io/tailscale/tailscale`)
+- Starts services again with `docker compose up -d`
 
 ### View Resource Usage
 ```bash
@@ -585,6 +629,7 @@ This will permanently delete ALL user data, passwords, and organizations. Create
 ├── vw-logs/               # Application logs
 ├── backups/               # Automated backup storage
 │   └── vaultwarden_complete_backup_*.tar.gz
+├── redeploy.sh            # Stop/remove containers+images and recreate stack
 └── backup.sh              # Comprehensive backup script
 ```
 

@@ -34,6 +34,11 @@ services:
     image: ghcr.io/tailscale/tailscale:v1.94.2
     container_name: tailscale
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -lc
+    command:
+      - "/usr/local/bin/containerboot & until tailscale status >/dev/null 2>&1; do sleep 1; done; sleep 12; tailscale funnel --bg --https=443 80 || true; sleep 5; tailscale funnel --bg --https=443 80 || true; wait -n"
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY}
       - TS_SERVE_CONFIG=/config/serve.json
