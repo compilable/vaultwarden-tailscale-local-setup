@@ -26,6 +26,7 @@ A secure, self-hosted password manager using Vaultwarden and Tailscale.
 
    # Security Settings
    SIGNUPS_ALLOWED=true  # Set to false after creating accounts
+   INVITATIONS_ALLOWED=false
    WEBSOCKET_ENABLED=true
    SHOW_PASSWORD_HINT=false
    ```
@@ -63,6 +64,16 @@ A secure, self-hosted password manager using Vaultwarden and Tailscale.
    # Start services
    docker compose up -d
    ```
+
+### 5a. **Start Automatically After Docker Restarts**
+
+Docker restart policies do not reliably honor Compose dependency order after the Docker daemon restarts. Install the systemd wrapper so `docker compose up -d` is run after Docker starts:
+
+```bash
+./install-systemd-service.sh
+```
+
+After this, `systemctl restart docker` will bring the stack back through Compose, so Vaultwarden waits for the Tailscale container health check instead of failing because the Tailscale network namespace is not ready.
 
 ### 6. **Verify Deployment**
    ```bash
@@ -629,6 +640,7 @@ This will permanently delete ALL user data, passwords, and organizations. Create
 ├── vw-logs/               # Application logs
 ├── backups/               # Automated backup storage
 │   └── vaultwarden_complete_backup_*.tar.gz
+├── install-systemd-service.sh # Install systemd wrapper for Docker restarts
 ├── redeploy.sh            # Stop/remove containers+images and recreate stack
 └── backup.sh              # Comprehensive backup script
 ```

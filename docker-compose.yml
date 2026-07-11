@@ -8,15 +8,17 @@ services:
     depends_on:
       tailscale:
         condition: service_healthy
+        restart: true
     volumes:
       - ./vw-data:/data:rw
       - ./vw-logs:/logs:rw
     environment:
-      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
       - DOMAIN=${DOMAIN}
       - ROCKET_PORT=${ROCKET_PORT}
       - WEBSOCKET_ENABLED=${WEBSOCKET_ENABLED}
       - SIGNUPS_ALLOWED=${SIGNUPS_ALLOWED}
+      - INVITATIONS_ALLOWED=${INVITATIONS_ALLOWED}
       - SHOW_PASSWORD_HINT=${SHOW_PASSWORD_HINT}
       - SENDS_ALLOWED=true
       - EMERGENCY_ACCESS_ALLOWED=true
