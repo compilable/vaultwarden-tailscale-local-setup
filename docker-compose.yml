@@ -32,7 +32,7 @@ services:
       start_period: 40s
 
   tailscale:
-    image: ghcr.io/tailscale/tailscale:v1.94.2
+    image: ghcr.io/tailscale/tailscale:latest
     container_name: tailscale
     restart: unless-stopped
     entrypoint:

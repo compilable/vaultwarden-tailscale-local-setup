@@ -267,8 +267,8 @@ sudo rm -rf ./tailscale-state/*
 docker compose up -d
 ```
 
-### Auth Key Expired
-1. Generate new auth key in Tailscale admin console
+### Auth Key Expired (90 Days Max)
+1. Generate [new auth key](https://login.tailscale.com/admin/settings/keys) in Tailscale admin console
 2. Update `TS_AUTHKEY` in `.env`
 3. Restart: `docker compose restart tailscale`
 
