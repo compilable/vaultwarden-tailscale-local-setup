@@ -7,7 +7,7 @@ DOCKER_BIN="$(command -v docker)"
 
 sudo tee "/etc/systemd/system/$SERVICE_NAME" >/dev/null <<SERVICE
 [Unit]
-Description=Vaultwarden and Tailscale Docker Compose stack
+Description=Vaultwarden Docker Compose stack
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target

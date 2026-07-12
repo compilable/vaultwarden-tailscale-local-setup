@@ -3,28 +3,37 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="${1:-$SCRIPT_DIR/backups}"
+DATE="$(date +%Y%m%d_%H%M%S)"
+BACKUP_FILE="vaultwarden_backup_$DATE.tar.gz"
+BACKUP_PATH="$BACKUP_DIR/$BACKUP_FILE"
 
-BACKUP_SCRIPT_PATH="${BACKUP_SCRIPT:-}"
-if [ -z "$BACKUP_SCRIPT_PATH" ]; then
-  for candidate in \
-    "$SCRIPT_DIR/../backup_utils/server_backups/vw_backup.sh" \
-    "$SCRIPT_DIR/../backup-utils/server_backups/vw_backup.sh"
-  do
-    if [ -x "$candidate" ]; then
-      BACKUP_SCRIPT_PATH="$candidate"
-      break
-    fi
-  done
+cd "$SCRIPT_DIR"
+mkdir -p "$BACKUP_DIR"
+
+restart_stack=false
+if docker compose ps --status running --services | grep -qx vaultwarden; then
+  restart_stack=true
+  docker compose stop vaultwarden
 fi
 
-if [ -z "$BACKUP_SCRIPT_PATH" ] || [ ! -f "$BACKUP_SCRIPT_PATH" ]; then
-  echo "Backup script not found or not executable. Checked common locations under $SCRIPT_DIR/../" >&2
-  echo "Set BACKUP_SCRIPT=/path/to/vw_backup.sh or restore the backup utilities directory." >&2
+cleanup() {
+  if [ "$restart_stack" = true ]; then
+    docker compose up -d vaultwarden >/dev/null
+  fi
+}
+trap cleanup EXIT
+
+items=()
+for item in vw-data .env docker-compose.yml .env.sample backup.sh redeploy.sh install-systemd-service.sh README.md vw-logs; do
+  [ -e "$item" ] && items+=("$item")
+done
+
+if [ "${#items[@]}" -eq 0 ]; then
+  echo "Nothing to back up" >&2
   exit 1
 fi
 
-if [ ! -x "$BACKUP_SCRIPT_PATH" ]; then
-  chmod +x "$BACKUP_SCRIPT_PATH"
-fi
+tar -czf "$BACKUP_PATH" "${items[@]}"
 
-exec "$BACKUP_SCRIPT_PATH" "$SCRIPT_DIR" "$BACKUP_DIR"
+echo "Backup created: $BACKUP_PATH"
+echo "Host Tailscale state is not included; it lives outside this project."
