@@ -16,12 +16,12 @@ A secure, self-hosted password manager using Vaultwarden and Tailscale.
    ```bash
    # Vaultwarden Configuration
    ADMIN_TOKEN=$2a$12$... # Leave commented out to disable admin panel
-   DOMAIN=https://ser-1.taile9f91c.ts.net
+   DOMAIN=https://ser.taile9f91c.ts.net
    ROCKET_PORT=80
 
    # Tailscale Configuration  
    TS_AUTHKEY=tskey-auth-YOUR_KEY_HERE
-   TS_CERT_DOMAIN=ser-1.taile9f91c.ts.net
+   TS_CERT_DOMAIN=ser.taile9f91c.ts.net
    TS_HOSTNAME=ser-1
 
    # Security Settings
@@ -84,7 +84,7 @@ After this, `systemctl restart docker` will bring the stack back through Compose
    docker compose exec tailscale tailscale status
    
    # Check service accessibility
-   curl -I https://ser-1.taile9f91c.ts.net/
+   curl -I https://ser.taile9f91c.ts.net/
    
    # View logs if needed
    docker compose logs -f
@@ -120,7 +120,7 @@ After this, `systemctl restart docker` will bring the stack back through Compose
   docker compose exec tailscale tailscale funnel status
    
    # Test public accessibility
-   curl -I https://ser-1.taile9f91c.ts.net/
+   curl -I https://ser.taile9f91c.ts.net/
    ```
 
    #### Update serve.json for Funnel:
@@ -134,7 +134,7 @@ After this, `systemctl restart docker` will bring the stack back through Compose
        }
      },
      "Web": {
-       "ser-1.taile9f91c.ts.net:443": {
+       "ser.taile9f91c.ts.net:443": {
          "Handlers": {
            "/": {
              "Proxy": "http://127.0.0.1:80"
@@ -146,7 +146,7 @@ After this, `systemctl restart docker` will bring the stack back through Compose
    ```
 
 ### 8. **Initial Setup**
-   - Access Vaultwarden at: `https://ser-1.taile9f91c.ts.net`
+   - Access Vaultwarden at: `https://ser.taile9f91c.ts.net`
    - Create your first user account
    - Set `SIGNUPS_ALLOWED=false` in `.env` and restart after setup
    - Access admin panel (if enabled) at `/admin`
@@ -184,10 +184,10 @@ sudo resolvectl flush-caches
 docker compose exec tailscale tailscale funnel status
 
 # Test DNS resolution
-nslookup ser-1.taile9f91c.ts.net 8.8.8.8
+nslookup ser.taile9f91c.ts.net 8.8.8.8
 
 # Test public accessibility  
-curl -I https://ser-1.taile9f91c.ts.net/
+curl -I https://ser.taile9f91c.ts.net/
 ```
 
 ### Mobile App HTTP 404 Errors
@@ -200,20 +200,20 @@ If your mobile app shows login errors or HTTP 404:
 
 #### **2. Verify Server Configuration:**
 Ensure these URLs are correct in mobile app:
-- **Server URL**: `https://ser-1.taile9f91c.ts.net`
-- **API Server URL**: `https://ser-1.taile9f91c.ts.net/api`
-- **Identity Server URL**: `https://ser-1.taile9f91c.ts.net/identity`
-- **Web Vault URL**: `https://ser-1.taile9f91c.ts.net`
+- **Server URL**: `https://ser.taile9f91c.ts.net`
+- **API Server URL**: `https://ser.taile9f91c.ts.net/api`
+- **Identity Server URL**: `https://ser.taile9f91c.ts.net/identity`
+- **Web Vault URL**: `https://ser.taile9f91c.ts.net`
 
 #### **3. Test API Endpoints:**
 ```bash
 # Test config endpoint
-curl https://ser-1.taile9f91c.ts.net/api/config
+curl https://ser.taile9f91c.ts.net/api/config
 
 # Test prelogin endpoint (requires POST with email)
 curl -X POST -H "Content-Type: application/json" \
      -d '{"email":"test@example.com"}' \
-     https://ser-1.taile9f91c.ts.net/api/accounts/prelogin
+     https://ser.taile9f91c.ts.net/api/accounts/prelogin
 ```
 
 ### Funnel Not Working
@@ -262,7 +262,7 @@ docker compose exec tailscale tailscale funnel --bg --https=443 80
 
 # Verify it's enabled
 docker compose exec tailscale tailscale funnel status
-# Should show: "# Funnel on: - https://ser-1.taile9f91c.ts.net"
+# Should show: "# Funnel on: - https://ser.taile9f91c.ts.net"
 ```
 
 ### Hostname Issues (`ser-1-2`, `ser-1-3` appearing)
@@ -316,7 +316,7 @@ docker compose up -d
 {
   "TCP": { "443": { "HTTPS": true } },
   "Web": {
-    "ser-1.taile9f91c.ts.net:443": {
+    "ser.taile9f91c.ts.net:443": {
       "Handlers": { "/": { "Proxy": "http://127.0.0.1:80" } }
     }
   }
@@ -333,7 +333,7 @@ docker compose up -d
     } 
   },
   "Web": {
-    "ser-1.taile9f91c.ts.net:443": {
+    "ser.taile9f91c.ts.net:443": {
       "Handlers": { "/": { "Proxy": "http://127.0.0.1:80" } }
     }
   }
@@ -514,7 +514,7 @@ docker compose ps
 docker compose exec tailscale tailscale serve status
 
 # Test access via browser
-# Should be accessible at same URL: https://ser-1.taile9f91c.ts.net
+# Should be accessible at same URL: https://ser.taile9f91c.ts.net
 ```
 
 ### ⚠️ **Critical Recovery Notes**

@@ -6,7 +6,7 @@
     }
   },
   "Web": {
-    "ser-1.taile9f91c.ts.net:443": {
+    "ser.taile9f91c.ts.net:443": {
       "Handlers": {
         "/": {
           "Proxy": "http://127.0.0.1:80"
